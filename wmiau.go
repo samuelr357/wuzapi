@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	"database/sql"
@@ -8,6 +9,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"image"
+	"image/jpeg"
 	"mime"
 	"os"
 	"path/filepath"
@@ -31,6 +34,11 @@ import (
 	waLog "go.mau.fi/whatsmeow/util/log"
 	//"google.golang.org/protobuf/proto"
 )
+
+type CustomMessageInfo struct {
+	types.MessageInfo
+	Base64 string
+}
 
 // var wlog waLog.Logger
 var clientPointer = make(map[int]*whatsmeow.Client)
@@ -366,8 +374,8 @@ func (mycli *MyClient) myEventHandler(rawEvt interface{}) {
 		img := evt.Message.GetImageMessage()
 		if img != nil {
 
-			// check/creates user directory for files
 			userDirectory := filepath.Join(exPath, "files", "user_"+txtid)
+
 			_, err := os.Stat(userDirectory)
 			if os.IsNotExist(err) {
 				errDir := os.MkdirAll(userDirectory, 0751)
@@ -382,14 +390,25 @@ func (mycli *MyClient) myEventHandler(rawEvt interface{}) {
 				log.Error().Err(err).Msg("Failed to download image")
 				return
 			}
-			exts, _ := mime.ExtensionsByType(img.GetMimetype())
-			path = filepath.Join(userDirectory, evt.Info.ID+exts[0])
-			err = os.WriteFile(path, data, 0600)
+
+			imgFile, _, err := image.Decode(bytes.NewReader(data))
 			if err != nil {
-				log.Error().Err(err).Msg("Failed to save image")
+				log.Error().Err(err).Msg("Failed to decode image")
 				return
 			}
-			log.Info().Str("path", path).Msg("Image saved")
+
+			var buf bytes.Buffer
+			err = jpeg.Encode(&buf, imgFile, nil)
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to encode image to JPG")
+				return
+			}
+
+			base64Str := base64.StdEncoding.EncodeToString(buf.Bytes())
+
+			postmap["Base64"] = base64Str
+
+			log.Info().Msg("Image processed and base64 encoded")
 		}
 
 		// try to get Audio if any
