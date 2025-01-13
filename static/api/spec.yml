@@ -91,6 +91,7 @@ paths:
 
         * Message
         * ReadReceipt
+        * QrCode
         * Presence
         * HistorySync
         * ChatPresence
@@ -116,6 +117,7 @@ paths:
 
         * Message
         * ReadReceipt
+        * QrCode
         * Presence
         * HistorySync
         * ChatPresence
@@ -159,6 +161,7 @@ paths:
 
         * Message
         * ReadReceipt
+        * QrCode
         * Presence
         * HistorySync
         * ChatPresence

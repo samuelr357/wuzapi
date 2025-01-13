@@ -207,6 +207,8 @@ func (s *server) startClient(userID int, textjid string, token string, subscript
 			}
 			for evt := range qrChan {
 				if evt.Event == "code" {
+					postmap := make(map[string]interface{})
+					postmap["type"] = "QrCode"
 					// Display QR code in terminal (useful for testing/developing)
 					if *logType != "json" {
 						qrterminal.GenerateHalfBlock(evt.Code, qrterminal.L, os.Stdout)
@@ -215,6 +217,10 @@ func (s *server) startClient(userID int, textjid string, token string, subscript
 					// Store encoded/embeded base64 QR on database for retrieval with the /qr endpoint
 					image, _ := qrcode.Encode(evt.Code, qrcode.Medium, 256)
 					base64qrcode := "data:image/png;base64," + base64.StdEncoding.EncodeToString(image)
+					postmap["base64qrcode"] = base64qrcode
+
+					callWebhook(postmap, mycli, "")
+
 					sqlStmt := `UPDATE users SET qrcode=$1 WHERE id=$2`
 					_, err := s.db.Exec(sqlStmt, base64qrcode, userID)
 					if err != nil {
@@ -343,6 +349,10 @@ func (mycli *MyClient) myEventHandler(rawEvt interface{}) {
 			userinfocache.Set(token, v, cache.NoExpiration)
 			log.Info().Str("jid", jid.String()).Str("userid", txtid).Str("token", token).Msg("User information set")
 		}
+
+		postmap["type"] = "Connection"
+		dowebhook = 1
+		postmap["state"] = "open"
 	case *events.StreamReplaced:
 		log.Info().Msg("Received StreamReplaced event")
 		return
@@ -571,6 +581,10 @@ func (mycli *MyClient) myEventHandler(rawEvt interface{}) {
 	case *events.AppState:
 		log.Info().Str("index", fmt.Sprintf("%+v", evt.Index)).Str("actionValue", fmt.Sprintf("%+v", evt.SyncActionValue)).Msg("App state event received")
 	case *events.LoggedOut:
+		postmap["type"] = "Connection"
+		dowebhook = 1
+		postmap["state"] = "close"
+
 		log.Info().Str("reason", evt.Reason.String()).Msg("Logged out")
 		killchannel[mycli.userID] <- true
 		sqlStmt := `UPDATE users SET connected=0 WHERE id=$1`
@@ -613,37 +627,61 @@ func (mycli *MyClient) myEventHandler(rawEvt interface{}) {
 		}
 
 		if webhookurl != "" {
-			log.Info().Str("url", webhookurl).Msg("Calling webhook")
-			jsonData, err := json.Marshal(postmap)
-			if err != nil {
-				log.Error().Err(err).Msg("Failed to marshal postmap to JSON")
-			} else {
-				data := map[string]string{
-					"jsonData": string(jsonData),
-					"token":    mycli.token,
-				}
+			callWebhook(postmap, *mycli, path)
+		}
+	}
 
-				// Adicione este log
-				log.Debug().Interface("webhookData", data).Msg("Data being sent to webhook")
+}
+func callWebhook(postmap map[string]interface{}, mycli MyClient, path string) {
+	// Obter URL do webhook
+	webhookurl := ""
+	myuserinfo, found := userinfocache.Get(mycli.token)
+	if !found {
+		log.Warn().Str("token", mycli.token).Msg("Could not call webhook as there is no user for this token")
+		return
+	}
+	webhookurl = myuserinfo.(Values).Get("Webhook")
 
-				if path == "" {
-					go callHook(webhookurl, data, mycli.userID)
-				} else {
-					// Create a channel to capture error from the goroutine
-					errChan := make(chan error, 1)
-					go func() {
-						err := callHookFile(webhookurl, data, mycli.userID, path)
-						errChan <- err
-					}()
+	// Verificar assinaturas
+	if !Find(mycli.subscriptions, postmap["type"].(string)) && !Find(mycli.subscriptions, "All") {
+		log.Warn().Str("type", postmap["type"].(string)).Msg("Skipping webhook. Not subscribed for this type")
+		return
+	}
 
-					// Optionally handle the error from the channel
-					if err := <-errChan; err != nil {
-						log.Error().Err(err).Msg("Error calling hook file")
-					}
-				}
-			}
-		} else {
-			log.Warn().Str("userid", strconv.Itoa(mycli.userID)).Msg("No webhook set for user")
+	// Verificar URL do webhook
+	if webhookurl == "" {
+		log.Warn().Str("userid", strconv.Itoa(mycli.userID)).Msg("No webhook set for user")
+		return
+	}
+
+	// Preparar dados para envio
+	log.Info().Str("url", webhookurl).Msg("Calling webhook")
+	jsonData, err := json.Marshal(postmap)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to marshal postmap to JSON")
+		return
+	}
+
+	data := map[string]string{
+		"jsonData": string(jsonData),
+		"token":    mycli.token,
+	}
+
+	log.Debug().Interface("webhookData", data).Msg("Data being sent to webhook")
+
+	// Chamar o webhook
+	if path == "" {
+		go callHook(webhookurl, data, mycli.userID)
+	} else {
+		errChan := make(chan error, 1)
+		go func() {
+			err := callHookFile(webhookurl, data, mycli.userID, path)
+			errChan <- err
+		}()
+
+		// Opcionalmente capturar erros
+		if err := <-errChan; err != nil {
+			log.Error().Err(err).Msg("Error calling hook file")
 		}
 	}
 }
