@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"time"
 
@@ -106,7 +107,14 @@ func main() {
 	// Definindo a string de conexão (DSN)
 	var dsn string
 	if dbURL != "" {
-		// Usar a URL de conexão diretamente
+		// Acrescenta `?sslmode=disable` à URL se não estiver presente
+		if !strings.Contains(dbURL, "sslmode=") {
+			if strings.Contains(dbURL, "?") {
+				dbURL += "&sslmode=disable"
+			} else {
+				dbURL += "?sslmode=disable"
+			}
+		}
 		dsn = dbURL
 	} else {
 		// Construir a string de conexão com base nas outras variáveis de ambiente
