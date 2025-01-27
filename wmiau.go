@@ -579,6 +579,9 @@ func (mycli *MyClient) myEventHandler(rawEvt interface{}) {
 		log.Info().Str("filename", fileName).Msg("Wrote history sync")
 		_ = file.Close()
 	case *events.AppState:
+		postmap["type"] = "AppState"
+		dowebhook = 1
+
 		log.Info().Str("index", fmt.Sprintf("%+v", evt.Index)).Str("actionValue", fmt.Sprintf("%+v", evt.SyncActionValue)).Msg("App state event received")
 	case *events.LoggedOut:
 		postmap["type"] = "Connection"
