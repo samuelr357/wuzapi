@@ -101,9 +101,20 @@ func main() {
 	dbName := os.Getenv("DB_NAME")
 	dbHost := os.Getenv("DB_HOST")
 	dbPort := os.Getenv("DB_PORT")
+	dbURL := os.Getenv("DB_URL")
 
-	// String de conexão para PostgreSQL
-	dsn := fmt.Sprintf("user=%s password=%s dbname=%s host=%s port=%s sslmode=disable", dbUser, dbPassword, dbName, dbHost, dbPort)
+	// Definindo a string de conexão (DSN)
+	var dsn string
+	if dbURL != "" {
+		// Usar a URL de conexão diretamente
+		dsn = dbURL
+	} else {
+		// Construir a string de conexão com base nas outras variáveis de ambiente
+		if dbUser == "" || dbPassword == "" || dbName == "" || dbHost == "" || dbPort == "" {
+			os.Exit(1)
+		}
+		dsn = fmt.Sprintf("user=%s password=%s dbname=%s host=%s port=%s sslmode=disable", dbUser, dbPassword, dbName, dbHost, dbPort)
+	}
 
 	// Conectando ao banco de dados PostgreSQL usando SQLX
 	db, err := sqlx.Open("postgres", dsn)
@@ -144,8 +155,8 @@ func main() {
 	s.connectOnStartup()
 
 	srv := &http.Server{
-		Addr:    *address + ":" + *port,
-		Handler: s.router,
+		Addr:              *address + ":" + *port,
+		Handler:           s.router,
 		ReadHeaderTimeout: 20 * time.Second,
 		ReadTimeout:       60 * time.Second,
 		WriteTimeout:      120 * time.Second,
