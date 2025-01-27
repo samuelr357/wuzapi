@@ -51,11 +51,11 @@ go build .
 
 ## Run
 
-By default it will start a REST service in port 8080. These are the parameters
+By default it will start a REST service in port 21465. These are the parameters
 you can use to alter behaviour
 
 * -address  : sets the IP address to bind the server to (default 0.0.0.0)
-* -port  : sets the port number (default 8080)
+* -port  : sets the port number (default 21465)
 * -logtype : format for logs, either console (default) or json
 * -wadebug : enable whatsmeow debug, either INFO or DEBUG levels are suported
 * -sslcertificate : SSL Certificate File

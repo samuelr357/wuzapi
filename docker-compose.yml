@@ -6,7 +6,7 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "8080:8080"
+      - "21465:21465"
     environment:
       - WUZAPI_ADMIN_TOKEN=H4Zbhw72PBKdTIgS
     volumes:
