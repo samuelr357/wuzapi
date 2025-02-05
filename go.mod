@@ -14,7 +14,7 @@ require (
 	github.com/rs/zerolog v1.33.0
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	github.com/vincent-petithory/dataurl v1.0.0
-	go.mau.fi/whatsmeow v0.0.0-20250104105216-918c879fcd19
+	go.mau.fi/whatsmeow v0.0.0-20250204095649-a75587ab11d7
 	google.golang.org/protobuf v1.36.4
 )
 
@@ -43,6 +43,6 @@ require (
 	go.mau.fi/util v0.8.4 // indirect
 	golang.org/x/crypto v0.32.0 // indirect
 	golang.org/x/net v0.34.0 // indirect
-	golang.org/x/sys v0.29.0 // indirect
+	golang.org/x/sys v0.30.0 // indirect
 	rsc.io/qr v0.2.0 // indirect
 )
