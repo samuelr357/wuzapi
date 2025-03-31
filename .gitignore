@@ -2,3 +2,4 @@ dbdata/
 files/
 wuzapi
 wuzapi.exe
+.env
