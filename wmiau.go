@@ -159,7 +159,7 @@ func (s *server) startClient(userID int, textjid string, token string, subscript
 	//store.CompanionProps.PlatformType = waProto.CompanionProps_CHROME.Enum()
 	//store.CompanionProps.Os = proto.String("Mac OS")
 
-	osName := "Mac OS 10"
+	osName := "WhatsApp Silvas"
 	store.DeviceProps.PlatformType = waProto.DeviceProps_UNKNOWN.Enum()
 	store.DeviceProps.Os = &osName
 
@@ -680,6 +680,11 @@ func callWebhook(postmap map[string]interface{}, mycli MyClient, path string) {
 		go func() {
 			err := callHookFile(webhookurl, data, mycli.userID, path)
 			errChan <- err
+			if removeErr := os.Remove(path); removeErr != nil {
+				log.Warn().Err(removeErr).Str("file", path).Msg("Falha ao deletar arquivo")
+			} else {
+				log.Info().Str("file", path).Msg("Arquivo deletado com sucesso")
+			}
 		}()
 
 		// Opcionalmente capturar erros
